@@ -1,12 +1,12 @@
 import string
-from math import log
-
+from math import sqrt, log
+from Build_Freqs import build_monogram_frequency, read_pdf
 from Vigenere import decrypt
+import cProfile
 
 def convert_text(text):
     text = text.lower()
     text = ''.join(filter(lambda c: c in string.ascii_lowercase, text))
-    print("Converted text: ", text)
     return text
 
 def fitness(text):
@@ -53,32 +53,55 @@ def kasiski_examination(ciphertext):
         ioc = sum / period
         if ioc > 1.6:
             found = True
-    return period
+    return period, slices
+
+def cosangle(x, y):
+    numerator = 0
+    lengthx2 = 0
+    lengthy2 = 0
+    for i in range(len(x)):
+        numerator += x[i] * y[i]
+        lengthx2 += x[i] * x[i]
+        lengthy2 += y[i] * y[i]
+    return numerator / sqrt(lengthx2 * lengthy2)
     
 def main():
     ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
-    CIPHERTEXT = """nuzjyxzwnr num rwl kglryz, bci esbbmhnt yep gn kywvig lvstbla jqgp sw wuqyedzh naba
+    INPUT = """nuzjyxzwnr num rwl kglryz, bci esbbmhnt yep gn kywvig lvstbla jqgp sw wuqyedzh naba
 kseqvh rubbtcgqzw, zfkesxvvb zzjbnyf bxzrzfo tlx ptjwzfo vclrujrzwa. mfy bxzrzfo
 vclrujrp avvjoqmn e mazmsuy xvrvd lbqwhanmff wg rlhbc, vruqtj brigmey, igb
 neiiwwgzfynvwi etjwlq num rwl kglryz"""
-    CIPHERTEXT = convert_text(CIPHERTEXT)
-    keylen = kasiski_examination(CIPHERTEXT)
+    CIPHERTEXT = convert_text(INPUT)
+    keylen, slices = kasiski_examination(CIPHERTEXT)
     print("Key length: ", keylen)
     
-    possible_keys = [word for word in open('POSSIBLE_KEYS.txt', 'r').read().split('\n') if len(word) == keylen]
+    monofrequencies = []
+    with open('monogram_frequency.txt', 'r') as file:
+        for line in file:
+            freq = float(line.split(':')[1])
+            monofrequencies.append(freq)
     
-    for key in possible_keys:
-        pt = decrypt(CIPHERTEXT, key)
-        print("Trying word: ", key, " with result: ", pt)
-        fit = fitness(pt)
-        if fit > -10:
-            break
-    result = decrypt(CIPHERTEXT, key)
+    # Find Key
+    frequencies = []
+    for i in range(keylen):
+        frequencies.append([0]*26)
+        for j in range(len(slices[i])):
+            frequencies[i][ALPHABET.index(slices[i][j])] += 1
+        for j in range(26):
+            frequencies[i][j] /= len(slices[i])
+            
+    key = ['a'] * keylen
+    for i in range(keylen):
+        for j in range(26):
+            testtable = frequencies[i][j:] + frequencies[i][:j]
+            if cosangle(monofrequencies, testtable) > 0.68:
+                key[i] = ALPHABET[j]
+    plaintext = decrypt(CIPHERTEXT, ''.join(key))
+    print("Key: ", key)
+    print("Plaintext: ", plaintext)
 
-    print(result)
+if __name__ == '__main__':
+    cProfile.run('main()')
     
     # fitness_score = fitness(CIPHERTEXT)
     # print(fitness_score)
-
-if __name__ == '__main__':
-    main()
