@@ -12,11 +12,14 @@ def read_pdf(file_path):
     return text
 
 def build_monogram_frequency(text):
-    total_chars = len(text)
-    frequency = Counter(text)
-    relative_frequency = {char: count / total_chars for char, count in frequency.items()}
-    sorted_frequency = dict(sorted(relative_frequency.items(), key=lambda item: item[1], reverse=True))
-    return sorted_frequency
+    ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
+    monofrequencies = [0]*26
+    for char in text:
+        x = ALPHABET.index(char)
+        monofrequencies[x] += 1
+    for i in range(26):
+        monofrequencies[i] = monofrequencies[i] / len(text)
+    return monofrequencies
 
 def build_tetragram_frequency(text):
     tetragrams = [text[i:i+4] for i in range(len(text) - 3)]
@@ -34,8 +37,8 @@ def main():
     monofreq = build_monogram_frequency(text)
     tetrafreq = build_tetragram_frequency(text)
     with open('monogram_frequency.txt', 'w') as file:
-        for char, freq in monofreq.items():
-            file.write(f'{char}: {freq}\n')
+        for i, freq in enumerate(monofreq):
+            file.write(f'{chr(i + ord("a"))}: {freq}\n')
     with open('tetragram_frequency.txt', 'w') as file:
         for tetra, freq in tetrafreq.items():
             file.write(f'{tetra}: {freq}\n')
