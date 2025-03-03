@@ -1,27 +1,19 @@
 def encrypt(plaintext, key):
+    ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
     ciphertext = ''
-    plaintext = plaintext.lower()
-    key = key.lower()
-    keylen = len(key)
     for i, char in enumerate(plaintext):
-        if char.isalpha():
-            shift = ord(key[i % keylen]) - ord('a')
-            shifted = (ord(char) - ord('a') + shift) % 26
-            ciphertext += chr(shifted + ord('a'))
-        else:
-            ciphertext += char
+        p = ALPHABET.index(char)
+        k = ALPHABET.index(key[i % len(key)])
+        c = (p + k) % 26
+        ciphertext += ALPHABET[c]
     return ciphertext
 
 def decrypt(ciphertext, key):
+    ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
     plaintext = ''
-    ciphertext = ciphertext.lower()
-    key = key.lower()
-    keylen = len(key)
-    for i, char in enumerate(ciphertext):
-        if char.isalpha():
-            shift = ord(key[i % keylen]) - ord('a')
-            shifted = (ord(char) - ord('a') - shift) % 26
-            plaintext += chr(shifted + ord('a'))
-        else:
-            plaintext += char
+    for i in range(len(ciphertext)):
+        p = ALPHABET.index(ciphertext[i])
+        k = ALPHABET.index(key[i % len(key)])
+        c = (p - k) % 26
+        plaintext += ALPHABET[c]
     return plaintext

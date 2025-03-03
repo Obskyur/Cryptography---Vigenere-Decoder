@@ -22,12 +22,17 @@ def build_monogram_frequency(text):
     return monofrequencies
 
 def build_tetragram_frequency(text):
-    tetragrams = [text[i:i+4] for i in range(len(text) - 3)]
-    total_tetragrams = len(tetragrams)
-    frequency = Counter(tetragrams)
-    relative_frequency = {tetragram: count / total_tetragrams for tetragram, count in frequency.items()}
-    sorted_frequency = dict(sorted(relative_frequency.items(), key=lambda item: item[1], reverse=True))
-    return sorted_frequency
+    ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
+    tetrafreqs = [0] * 26**4
+    for i in range(len(text) - 3):
+        x = (ALPHABET.index(text[i]) * 26**3 +
+             ALPHABET.index(text[i+1]) * 26**2 +
+             ALPHABET.index(text[i+2]) * 26 +
+             ALPHABET.index(text[i+3]))
+        tetrafreqs[x] += 1
+    for i in range(26**4):
+        tetrafreqs[i] /= len(text) - 3
+    return tetrafreqs
 
 def main():
     pdf_path = 'USHistory-WEB.pdf'
@@ -40,8 +45,8 @@ def main():
         for i, freq in enumerate(monofreq):
             file.write(f'{chr(i + ord("a"))}: {freq}\n')
     with open('tetragram_frequency.txt', 'w') as file:
-        for tetra, freq in tetrafreq.items():
-            file.write(f'{tetra}: {freq}\n')
+        for i, freq in enumerate(tetrafreq):
+            file.write(f'{chr(i // (26**3) + ord("a"))}{chr((i // (26**2)) % 26 + ord("a"))}{chr((i // 26) % 26 + ord("a"))}{chr(i % 26 + ord("a"))}: {freq}\n')
 
 if __name__ == '__main__':
     main()

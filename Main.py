@@ -1,31 +1,27 @@
 import string
 from math import sqrt, log
-from Build_Freqs import build_monogram_frequency, read_pdf
-from Vigenere import decrypt
-import cProfile
+from random import randrange
 
 def convert_text(text):
     text = text.lower()
     text = ''.join(filter(lambda c: c in string.ascii_lowercase, text))
     return text
 
-def fitness(text):
+def fitness(text, tetrafrequencies):
+    ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
     result = 0
     for i in range(len(text) - 3):
         tetragram = text[i:i+4]
-        x = tetragram
-        with open('tetragram_frequency.txt', 'r') as file:
-            for line in file:
-                if line.startswith(x):
-                    y = float(line.split()[1])
-                    break
-                else:
-                    y = 0
+        x = (ALPHABET.index(tetragram[0]) * 26**3 +
+             ALPHABET.index(tetragram[1]) * 26**2 +
+             ALPHABET.index(tetragram[2]) * 26 +
+             ALPHABET.index(tetragram[3]))
+        y = tetrafrequencies[x]
         if y == 0:
-            result -= 15
+            result += -15
         else:
             result += log(y)
-    result = result / (len(text) - 3)
+    result /= len(text) - 3
     return result
 
 def coincidence_index(text):
@@ -51,9 +47,9 @@ def kasiski_examination(ciphertext):
         for i in range(period):
             sum += coincidence_index(slices[i])
         ioc = sum / period
-        if ioc > 1.6:
+        if ioc > 1.41:
             found = True
-    return period, slices
+    return period
 
 def cosangle(x, y):
     numerator = 0
@@ -64,44 +60,52 @@ def cosangle(x, y):
         lengthx2 += x[i] * x[i]
         lengthy2 += y[i] * y[i]
     return numerator / sqrt(lengthx2 * lengthy2)
+
+def decrypt(ciphertext, key):
+    ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
+    plaintext = ''
+    for i in range(len(ciphertext)):
+        p = ALPHABET.index(ciphertext[i])
+        k = ALPHABET.index(key[i % len(key)])
+        c = (p - k) % 26
+        plaintext += ALPHABET[c]
+    return plaintext
     
 def main():
     ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
-    INPUT = """nuzjyxzwnr num rwl kglryz, bci esbbmhnt yep gn kywvig lvstbla jqgp sw wuqyedzh naba
+    INPUT = """
+nuzjyxzwnr num rwl kglryz, bci esbbmhnt yep gn kywvig lvstbla jqgp sw wuqyedzh naba
 kseqvh rubbtcgqzw, zfkesxvvb zzjbnyf bxzrzfo tlx ptjwzfo vclrujrzwa. mfy bxzrzfo
 vclrujrp avvjoqmn e mazmsuy xvrvd lbqwhanmff wg rlhbc, vruqtj brigmey, igb
-neiiwwgzfynvwi etjwlq num rwl kglryz"""
+neiiwwgzfynvwi etjwlq num rwl kglryz
+"""
     CIPHERTEXT = convert_text(INPUT)
-    keylen, slices = kasiski_examination(CIPHERTEXT)
+    keylen = kasiski_examination(CIPHERTEXT)
     print("Key length: ", keylen)
     
-    monofrequencies = []
-    with open('monogram_frequency.txt', 'r') as file:
+    tetrafrequencies = []
+    with open('tetragram_frequency.txt', 'r') as file:
         for line in file:
             freq = float(line.split(':')[1])
-            monofrequencies.append(freq)
+            tetrafrequencies.append(freq)
     
-    # Find Key
-    frequencies = []
-    for i in range(keylen):
-        frequencies.append([0]*26)
-        for j in range(len(slices[i])):
-            frequencies[i][ALPHABET.index(slices[i][j])] += 1
-        for j in range(26):
-            frequencies[i][j] /= len(slices[i])
-            
+    # Find Key (Variational Method)
     key = ['a'] * keylen
-    for i in range(keylen):
-        for j in range(26):
-            testtable = frequencies[i][j:] + frequencies[i][:j]
-            if cosangle(monofrequencies, testtable) > 0.68:
-                key[i] = ALPHABET[j]
-    plaintext = decrypt(CIPHERTEXT, ''.join(key))
-    print("Key: ", key)
+    fit = -1000000
+    while fit < -10:
+        K = key[:]
+        x = randrange(keylen)
+        for i in range(26):
+            K[x] = ALPHABET[i]
+            pt = decrypt(CIPHERTEXT, K)
+            F = fitness(pt, tetrafrequencies)
+            if (F > fit):
+                key = K[:]
+                fit = F
+    plaintext = decrypt(CIPHERTEXT, key)
+    print("Key: ", ''.join(key))
     print("Plaintext: ", plaintext)
+    
 
 if __name__ == '__main__':
-    cProfile.run('main()')
-    
-    # fitness_score = fitness(CIPHERTEXT)
-    # print(fitness_score)
+   main()
