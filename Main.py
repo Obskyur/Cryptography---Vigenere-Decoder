@@ -1,9 +1,12 @@
 import string
 from math import log
 
+from Vigenere import decrypt
+
 def convert_text(text):
     text = text.lower()
     text = ''.join(filter(lambda c: c in string.ascii_lowercase, text))
+    print("Converted text: ", text)
     return text
 
 def fitness(text):
@@ -25,17 +28,57 @@ def fitness(text):
     result = result / (len(text) - 3)
     return result
 
+def coincidence_index(text):
+    counts = [0] * 26
+    for char in text:
+        counts[ord(char) - ord('a')] += 1
+    numer = 0
+    total = 0
+    for i in range(26):
+        numer += counts[i] * (counts[i] - 1)
+        total += counts[i]
+    return 26 * numer / (total * (total - 1))
+
+def kasiski_examination(ciphertext):
+    found = False
+    period = 0
+    while not found:
+        period += 1
+        slices = [''] * period
+        for i in range(len(ciphertext)):
+            slices[i % period] += ciphertext[i]
+        sum = 0
+        for i in range(period):
+            sum += coincidence_index(slices[i])
+        ioc = sum / period
+        if ioc > 1.6:
+            found = True
+    return period
+    
 def main():
-    CIPHERTEXT = """Fitness is a way to quantify how closely a piece of text resembles English text. One way to do this is to
-compare the frequencies of tetragrams in the text with the frequency table that we built in the last
-section. It turns out that throwing in a logarithm helps, too. The basic idea is to start with zero and add
-the log of the value from our table for each tetragram that we find in the text that we are evaluating,
-then divide by the number of tetragrams to get an average. The average is more useful than the total
-because it allows our programs to make decisions independent of the length of the text. Defined in this
-way, the fitness of English texts is typically around"""
+    ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
+    CIPHERTEXT = """nuzjyxzwnr num rwl kglryz, bci esbbmhnt yep gn kywvig lvstbla jqgp sw wuqyedzh naba
+kseqvh rubbtcgqzw, zfkesxvvb zzjbnyf bxzrzfo tlx ptjwzfo vclrujrzwa. mfy bxzrzfo
+vclrujrp avvjoqmn e mazmsuy xvrvd lbqwhanmff wg rlhbc, vruqtj brigmey, igb
+neiiwwgzfynvwi etjwlq num rwl kglryz"""
     CIPHERTEXT = convert_text(CIPHERTEXT)
-    fitness_score = fitness(CIPHERTEXT)
-    print(fitness_score)
+    keylen = kasiski_examination(CIPHERTEXT)
+    print("Key length: ", keylen)
+    
+    possible_keys = [word for word in open('POSSIBLE_KEYS.txt', 'r').read().split('\n') if len(word) == keylen]
+    
+    for key in possible_keys:
+        pt = decrypt(CIPHERTEXT, key)
+        print("Trying word: ", key, " with result: ", pt)
+        fit = fitness(pt)
+        if fit > -10:
+            break
+    result = decrypt(CIPHERTEXT, key)
+
+    print(result)
+    
+    # fitness_score = fitness(CIPHERTEXT)
+    # print(fitness_score)
 
 if __name__ == '__main__':
     main()
