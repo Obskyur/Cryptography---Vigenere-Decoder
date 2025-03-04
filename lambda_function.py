@@ -1,7 +1,6 @@
 import string
 from math import sqrt, log
 from random import randrange
-import json
 
 ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 
@@ -71,49 +70,73 @@ def fitness(text, tetrafrequencies):
     result /= len(text) - 3
     return result
     
-def main():
-    with open('sqs_messages.json', 'r') as infile:
-        sqs_messages = json.load(infile)['messages']
-
-    with open('results.json', 'w') as outfile:
-        outfile.write('{\n"messages": [\n')
-
-        first = True
-        for message in sqs_messages:
-            INPUT = message['encrypt_text']
-            CIPHERTEXT = convert_text(INPUT)
-            keylen = kasiski_examination(CIPHERTEXT)
-            print("Key length: ", keylen)
-
-            tetrafrequencies = []
-            with open('tetragram_frequency.txt', 'r') as file:
-                for line in file:
-                    freq = float(line.split(':')[1])
-                    tetrafrequencies.append(freq)
-
-            # Find Key (Variational Method)
-            key = ['a'] * keylen
-            fit = -1000000
-            fit_threshold = -10
-            while fit < fit_threshold:
-                K = key[:]
-                x = randrange(keylen)
-                for i in range(26):
-                    K[x] = ALPHABET[i]
-                    pt = decrypt(CIPHERTEXT, K)
-                    F = fitness(pt, tetrafrequencies)
-                    if (F > fit):
-                        key = K[:]
-                        fit = F
-                fit_threshold -= 0.1
-
-            if not first:
-                outfile.write(',\n')
-            first = False
-
-            json.dump({'id': message['id'], 'key': ''.join(key)}, outfile, indent=4)
-
-        outfile.write('\n]\n}')
+def main(INPUT):
+    CIPHERTEXT = convert_text(INPUT)
+    keylen = kasiski_examination(CIPHERTEXT)
+    print("Key length: ", keylen)
+    
+    tetrafrequencies = []
+    with open('tetragram_frequency.txt', 'r') as file:
+        for line in file:
+            freq = float(line.split(':')[1])
+            tetrafrequencies.append(freq)
+    
+    # Find Key (Variational Method)
+    key = ['a'] * keylen
+    fit = -1000000
+    while fit < -11:
+        K = key[:]
+        x = randrange(keylen)
+        for i in range(26):
+            K[x] = ALPHABET[i]
+            pt = decrypt(CIPHERTEXT, K)
+            F = fitness(pt, tetrafrequencies)
+            if (F > fit):
+                key = K[:]
+                fit = F
+    plaintext = decrypt(CIPHERTEXT, key)
+    return ''.join(key)
     
 if __name__ == '__main__':
    main()
+
+def lambda_handler(event, context):
+    print("Received event: " + json.dumps(event))
+    try:
+        # Parse the SQS message body
+        sqs_message = json.loads(event['Records'][0]['body'])  # Assuming a single SQS message
+        challenge_message = sqs_message['message']
+        user_id = challenge_message['user_id']
+        original_message_id = challenge_message['message']['id']
+        data = challenge_message['message']['data']
+
+        print("Received challenge message:", challenge_message)
+            
+        # Extract id and encrypt-text
+        
+        
+        # Compute GCD-related data
+        secret_key = main(encrypt-text)
+
+        # Construct the response string
+        response_string = f"{id},{encrypt-text}"
+
+        # Append result to json solutions in S3
+        # ???
+
+        return {
+            "statusCode": 200,
+            "body": json.dumps({
+                "message": "Result successfully appended to solutions",
+                "sqs_response": response
+            })
+        }
+
+    except Exception as e:
+        print("Error:", str(e))
+        return {
+            "statusCode": 500,
+            "body": json.dumps({
+                "error": str(e)
+            })
+        }   
